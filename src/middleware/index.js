@@ -1,24 +1,19 @@
 const jwt = require("jsonwebtoken");
 
 const authorizationJwt = (req, res, next) => {
-  var token = req.session.token;
-  console.log(token);
-  if (!token) {
-    return res.status(403).json({ message: "token is required" });
-  }
-  const parseToken = token;
-  if (parseToken) {
-    jwt.verify(parseToken, process.env.SECRET_KEY, function (err, decoded) {
-      if (err) {
-        return res.status(403).json({ message: "token not correct" });
-      }
-      req.user = decoded.data;
-      console.log(req.user);
-      next();
-    });
-  } else {
-    return res.status(401).json({ message: "NOT AUTHENTICATED" });
-  }
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (token == null) return res.sendStatus(401);
+  
+  jwt.verify(token, process.env.SECRET_KEY , (err, user) => {
+    console.log(err);
+    if (err) {
+      console.log("Forbidden login")
+      return res.sendStatus(403);
+    }
+    req.user = user;
+    next();
+  });
 };
 
 const adminAuthorization = (req, res, next) => {

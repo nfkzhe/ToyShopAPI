@@ -97,7 +97,7 @@ const getTopSoldProduct = async (req, res) => {
   }
 };
 
-const getProductByCategory = async (req, res) => {
+const   getProductByCategory = async (req, res) => {
     const cId = req.query.category;
     try {
     const filteredProducts = await ProductModel.find({ categoryId: cId });

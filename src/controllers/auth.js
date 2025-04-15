@@ -1,5 +1,6 @@
 const User = require("../models/user");
 const { generateToken, hashPassword, comparePassword } = require("../utils");
+const jwt = require('jsonwebtoken');
 require("dotenv/config");
 
 const register = async (req, res) => {
@@ -33,30 +34,33 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
   const { email, pass } = req.body;
+  console.log(email, pass)
   if (email && pass) {
-    const check = await User.findOne({ email: email }, { password: 0 });
-    if (check === null) {
-      res.status(404).json({ message: "Sai email." });
-    } else {
-      const comparePass = await comparePassword(pass, check.pass);
-      console.log(comparePass, "check pass");
-      if (comparePass == true) {
-        const token = generateToken(check._id);
-        console.log("id", check._id);
-        req.session.token = token;
-        req.session.user = check;
-        console.log(req.session);
-        res.json({
-          message: "dang nhap thanh cong",
-          data: check,
-          token: token,
-        });
-      } else {
-        res.status(404).json({ message: "Sai mật khẩu." });
-      }
+    const user = await User.findOne({ email }); // KHÔNG loại password ở đây
+    if (!user) {
+      return res.status(404).json({ message: "Sai email." });
     }
+
+    // So sánh đúng cách
+    const isMatch = await comparePassword(pass, user.pass);
+    if (!isMatch) {
+      return res.status(404).json({ message: "Sai mật khẩu." });
+    }
+
+    // Xóa password thủ công trước khi trả về
+    const { password, ...userWithoutPassword } = user._doc;
+    const token = jwt.sign({ id: user._id, email: email }, process.env.SECRET_KEY, { expiresIn: '1d' });
+
+    req.session.token = token;
+    req.session.user = userWithoutPassword;
+
+    return res.status(200).json({
+      message: "Đăng nhập thành công",
+      data: userWithoutPassword,
+      token,
+    });
   } else {
-    res.status(404).json({ message: "Sai tài khoản hoặc mật khẩu." });
+    return res.status(404).json({ message: "Sai mật khẩu." });
   }
 };
 

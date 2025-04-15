@@ -72,17 +72,16 @@ const changePass = async (req, res) => {
 };
 
 const findUser = async (req, res) => {
-  const { userID } = req.params;
+  const userID = req.user.id;
   try {
     const user = await UserModel.findById(userID);
-    console.log(user);
-    return res.status(200).json(user);
+    return res.status(200).json({status:200, message: "GetUserInfo", data: user});
   } catch (error) {
     console.log(error)
     return res.status(500).json(error);
   }
-  
 };
+
 
 module.exports = {
   getAll,

@@ -9,7 +9,7 @@ userRoute.delete("/:userId", adminAuthorization, UserControllers.delUser);
 
 
 
-userRoute.get("/find/:userID", UserControllers.findUser);
+userRoute.get("/find", authorizationJwt,  UserControllers.findUser);
 userRoute.post("/login", AuthControllers.login);
 userRoute.post("/register", AuthControllers.register);
 userRoute.post("/changepass", authorizationJwt, UserControllers.changePass);
