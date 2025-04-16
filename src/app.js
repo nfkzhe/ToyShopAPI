@@ -10,7 +10,12 @@ require('./DB/mongo');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: 'https://toy-shop-fe-phi.vercel.app',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
