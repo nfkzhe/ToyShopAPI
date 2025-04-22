@@ -1,5 +1,9 @@
 const UserModel = require("../models/user");
 const { comparePassword, hashPassword } = require("../utils");
+
+const fs = require("fs");
+const path = require("path");
+const sharp = require("sharp");
 require("dotenv/config");
 
 const getAll = async (req, res) => {
@@ -56,20 +60,24 @@ const delUser = async (req, res) => {
 const changePass = async (req, res) => {
   const { userID } = req.params;
   const { pass, newpass } = req.body;
-  const comparePassword = await comparePassword(pass, pass);
-  if (comparePassword == true) {
+
+  const user = await UserModel.findById(userID);
+  if (!user) return res.status(404).json("User not found");
+
+  const isCorrect = await comparePassword(pass, user.pass);
+  if (isCorrect) {
     try {
       const hashed = await hashPassword(newpass);
-      const updatePass = { pass: hashed };
-      const update = await UserModel.findByIdAndUpdate(userID, updatePass);
-      return res.status(200).json("Da update", update);
+      await UserModel.findByIdAndUpdate(userID, { pass: hashed });
+      return res.status(200).json("Đổi mật khẩu thành công");
     } catch (error) {
       return res.status(500).json(error);
     }
   } else {
-    return res.status(500).json("sai mat khau cu");
+    return res.status(400).json("Sai mật khẩu cũ");
   }
 };
+
 
 const findUser = async (req, res) => {
   const userID = req.user.id;
@@ -82,6 +90,52 @@ const findUser = async (req, res) => {
   }
 };
 
+const getProfile = async (req, res) => {
+  
+  try {
+    const user = await UserModel.findById(req.user.id).select('-password'); // loại bỏ password
+
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy người dùng' });
+    }
+
+    res.status(200).json({ data: user });
+  } catch (error) {
+    console.error('Lỗi khi lấy thông tin user:', error);
+    console.log("🍪 Cookies gửi từ client:", req.cookies)
+    res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
+const uploadAvatar = async (req, res) => {
+  const userID = req.user.id;
+  const file = req.file;
+  if (!file) return res.status(400).json({ message: "Không có file được upload!" });
+
+  try {
+    const user = await UserModel.findById(userID);
+    if (!user) return res.status(404).json({ message: "Không tìm thấy người dùng" });
+
+    // Xóa avatar cũ (nếu có)
+    if (user.avatar) {
+      const oldPath = path.join(__dirname, '..', 'uploads', 'avatar', user.avatar);
+      if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
+    }
+
+    user.avatar = file.filename;
+    await user.save();
+
+    res.status(200).json({
+      message: "Upload avatar thành công",
+      avatar: file.filename
+    });
+
+  } catch (err) {
+    console.error("Lỗi trong quá trình upload avatar:", err);
+    res.status(500).json({ message: "Lỗi server" });
+  }
+};
+
 
 module.exports = {
   getAll,
@@ -89,4 +143,7 @@ module.exports = {
   delUser,
   changePass,
   findUser,
+  getProfile,
+  uploadAvatar,
+
 };

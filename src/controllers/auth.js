@@ -5,7 +5,7 @@ require("dotenv/config");
 
 const register = async (req, res) => {
   try {
-    const { email, pass, ten, } = req.body;
+    const { email, pass, ten } = req.body;
     const hashed = await hashPassword(pass);
 
     if (email && pass && ten) {
@@ -16,9 +16,11 @@ const register = async (req, res) => {
           email: email,
           pass: hashed,
         });
+        const userSafe = { ...cre._doc };
+        delete userSafe.pass;
         return res
           .status(200)
-          .json({ message: "dang ky thanh cong", data: cre });
+          .json({ message: "dang ky thanh cong", data: userSafe });
       } else {
         return res
           .status(500)
@@ -34,35 +36,47 @@ const register = async (req, res) => {
 
 const login = async (req, res) => {
   const { email, pass } = req.body;
-  console.log(email, pass)
   if (email && pass) {
-    const user = await User.findOne({ email }); // KHÔNG loại password ở đây
+    const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: "Sai email." });
     }
 
-    // So sánh đúng cách
     const isMatch = await comparePassword(pass, user.pass);
     if (!isMatch) {
       return res.status(404).json({ message: "Sai mật khẩu." });
     }
 
-    // Xóa password thủ công trước khi trả về
     const { password, ...userWithoutPassword } = user._doc;
-    const token = jwt.sign({ id: user._id, email: email }, process.env.SECRET_KEY, { expiresIn: '1d' });
+    const token = jwt.sign({ id: user._id, email , role: user.role }, process.env.SECRET_KEY, { expiresIn: '1d' });
 
-    req.session.token = token;
-    req.session.user = userWithoutPassword;
+    // 🧁 Set cookie thay vì gửi token
+    res.cookie('jwt', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production' ? true : false, // Chỉ bật secure khi sản xuất
+      sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+      path: '/',
+      maxAge: 24 * 60 * 60 * 1000, // 1 ngày
+    });
 
     return res.status(200).json({
       message: "Đăng nhập thành công",
-      data: userWithoutPassword,
-      token,
+      data: userWithoutPassword
     });
   } else {
-    return res.status(404).json({ message: "Sai mật khẩu." });
+    return res.status(400).json({ message: "Thiếu email hoặc mật khẩu." });
   }
 };
+
+const logout = (req, res) => {
+  res.clearCookie('jwt', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+  });
+  return res.status(200).json({ message: 'Đã đăng xuất' });
+};
+
 
 // const regCoRef = (req, res) => {
 //     const conflictError = null;
@@ -73,4 +87,5 @@ const login = async (req, res) => {
 module.exports = {
   register,
   login,
+  logout,
 };

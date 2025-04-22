@@ -7,7 +7,8 @@ const { authorizationJwt } = require("../middleware");
 const productRoute = require("./product");
 const productsRoute = require("./products");
 const cartRoute = require("./cart");
-
+const orderRoute = require("./order");
+const adminRoute = require("./admin");
 apiRoute.use(
   "/user",
   (req, res, next) => {
@@ -49,10 +50,24 @@ apiRoute.use(
   },
   cartRoute
 );
-// apiRoute.use('/admin',(req, res, next) => {
-//     console.log('call admin api route');
-//     next();
-// }, courseRoute);
+apiRoute.use(
+  "/orders",
+  (req, res, next) => {
+    console.log("call orders api route");
+    next();
+  },
+  orderRoute
+);
+
+apiRoute.use(
+  "/admin",
+  (req, res, next) => {
+    console.log("call Admin api route");
+    next();
+  },
+  adminRoute
+);
+
 
 apiRoute.use("/", function (req, res) {
   return res.json({ message: "api working" });

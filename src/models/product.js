@@ -12,9 +12,11 @@ const product = new Schema({
     ProductName : { type: String},
     ProductPrice: {type : Number, default: 0},
     ProductDes: {type: String, default: ""},
-    ProductQuantity: {type: Number, default: 0},
     categoryId: {type: String},
+    featured: {type:Boolean , default: false},
+    discount: {type:Number, default: 0},
     image: [{ type: String}],
+    inStock: {type:Boolean, default: true},
     sold: {type: Number, default: 0},
 });
 

@@ -8,19 +8,18 @@ let VND = new Intl.NumberFormat("vi-VN", {
 const getAllCategories = async (req, res) => {
   try {
     const cateList = await CategoryModel.find();
-    res.status(200)
-    .json({ status: 200, message: "ListCate", data: cateList });
-  }catch (e) {
+    res.status(200).json({ status: 200, message: "ListCate", data: cateList });
+  } catch (e) {
     res.status(500).send("Lỗi truy vấn dữ liệu");
-    console.log(e)
+    console.log(e);
   }
-}
+};
 
 const addCate = async (req, res) => {
   const { CateName } = req.body;
   try {
     const cre = await CategoryModel.create({
-      CateName: CateName
+      CateName: CateName,
     });
     return res
       .status(200)
@@ -56,77 +55,151 @@ const deleteCate = async (req, res) => {
 };
 
 const addProduct = async (req, res) => {
-  const { ProductName, ProductPrice, ProductDes, ProductQuantity, categoryId, image } = req.body;
+  const {
+    ProductName,
+    ProductPrice,
+    ProductDes,
+    discount,
+    categoryId,
+    inStock,
+    featured,
+    image
+  } = req.body;
+
   try {
-    const cre = await ProductModel.create({
-      ProductName: ProductName,
-      ProductPrice: ProductPrice,
-      ProductQuantity: ProductQuantity,
-      ProductDes: ProductDes,
-      categoryId: categoryId,
-      image: image,
+    const newProduct = await ProductModel.create({
+      ProductName,
+      ProductPrice,
+      ProductDes,
+      discount,
+      categoryId,
+      inStock,
+      featured,
+      image,
     });
-    return res
-      .status(200)
-      .json({ message: "ĐÃ THÊM", data: cre });
+
+    res.status(200).json({ message: "Thêm sản phẩm thành công", data: newProduct });
   } catch (e) {
-    res.status(500).send(e);
-    console.log(e);
+    console.error(e);
+    res.status(500).json({ message: "Lỗi server khi thêm sản phẩm" });
+  }
+};
+const updateProduct = async (req, res) => {
+  const { id } = req.params;
+  const updatedData = req.body;
+  console.log("ID: ", id)
+  try {
+    const updatedProduct = await ProductModel.findByIdAndUpdate(id, updatedData, { new: true });
+
+    // Kiểm tra nếu không tìm thấy sản phẩm
+    if (!updatedProduct) {
+      return res.status(404).json({ message: 'Sản phẩm không tồn tại' });
+    }
+
+    res.status(200).json({ message: "Sửa sản phẩm thành công", data: updatedProduct });
+  } catch (error) {
+    console.error('Lỗi khi cập nhật sản phẩm:', error);
+    res.status(500).json({ message: 'Lỗi khi cập nhật sản phẩm', error });
+  }
+};
+const deleteProduct = async (req,res) => {
+  const {id} = req.params;
+  try {
+    await ProductModel.deleteOne({ _id: id});
+    return res.status(200).json({message: "xóa thành công sản phẩm"})
+  }catch (e) {
+    console.log(e)
+    return res.status(500).json({message: 'Lỗi khi xóa sản phẩm', e})
+  }
+}
+
+const uploadProductImages = async (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ message: "Không có ảnh nào được upload!" });
+  }
+  try {
+    const filenames = req.files.map(file => file.filename);
+    console.log("fileName",filenames)
+    return res.status(200).json({
+      message: "Upload ảnh thành công",
+      images: filenames
+    });
+  } catch (err) {
+    console.error("Lỗi upload ảnh sản phẩm:", err);
+    res.status(500).json({ message: "Lỗi server" });
   }
 };
 
 const getTopSoldProduct = async (req, res) => {
   try {
-    const productList = await ProductModel.find()
-      .sort({ sold: -1 })
-      .limit(10); // Limit to top 10 products
+    const productList = await ProductModel.find().sort({ sold: -1 }).limit(10); // Limit to top 10 products
     const totalProducts = await ProductModel.countDocuments();
-    res.status(200).json({ 
+    res.status(200).json({
       status: 200,
       message: "Top sold products retrieved successfully",
       data: productList,
-      totalProducts: totalProducts
+      totalProducts: totalProducts,
     });
   } catch (e) {
-    res.status(500).json({ 
+    res.status(500).json({
       status: 500,
       message: "Error retrieving top sold products",
-      error: e.message 
+      error: e.message,
     });
     console.error("Error in getTopSoldProduct:", e);
   }
 };
 
-const   getProductByCategory = async (req, res) => {
-    const cId = req.query.category;
-    try {
-    const filteredProducts = await ProductModel.find({ categoryId: cId });
-    
-    if (filteredProducts.length === 0) {
-      return res.status(200).json({ message: 'Không tìm thấy sản phẩm trong danh mục này' ,data: [null]});
-    }
-  
-    res.status(200).json({ message: 'GetProduct',status: 200, data: filteredProducts });
-    } catch (error) {
-      console.error('Lỗi khi truy vấn cơ sở dữ liệu:', error);
-      res.status(500).json({ error: 'Lỗi server' });
-    }
+const getProductByCategory = async (req, res) => {
+  const categoryQuery = req.query.category;
+  const page = Math.max(parseInt(req.query.page) || 1, 1);
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  if (!categoryQuery) {
+    return res.status(400).json({ error: "Thiếu tham số category" });
+  }
+
+  // Tách chuỗi thành mảng và lọc những id hợp lệ
+  const categoryIds = categoryQuery
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id);
+
+  try {
+    const products = await ProductModel.find({
+      categoryId: { $in: categoryIds },
+    })
+      .skip(skip)
+      .limit(limit);
+
+    res
+      .status(200)
+      .json({ message: "GetProduct", status: 200, data: products });
+  } catch (error) {
+    console.error("Lỗi khi truy vấn cơ sở dữ liệu:", error);
+    res.status(500).json({ error: "Lỗi server" });
+  }
 };
 
 const getProductDetail = async (req, res) => {
   const cId = req.params.ProductID;
   try {
-  await ProductModel.findOne({ _id: cId }).then((productDetail) => {
-    res.status(200).json({status: 200, message: 'GetProductDetail', data: productDetail});
-  }); 
+    await ProductModel.findOne({ _id: cId }).then((productDetail) => {
+      res.status(200).json({
+        status: 200,
+        message: "GetProductDetail",
+        data: productDetail,
+      });
+    });
   } catch (e) {
     res.status(500).send(e);
-    console.log(e)
+    console.log(e);
   }
 };
 const getAll = async (req, res) => {
   const keyWord = req.query.keyWord;
-  const { page = 1, limit = 2 } = req.query;
+  const { page = 1, limit = 10 } = req.query;
 
   // tim ten den tu query string
   let condition = {};
@@ -135,27 +208,80 @@ const getAll = async (req, res) => {
   }
   try {
     const productList = await await ProductModel.find(condition)
-        .limit(limit * 1)
-        .skip((page - 1) * limit)
-        .exec(); // Limit to top 10 products
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .exec(); // Limit to top 10 products
     const totalProducts = await ProductModel.countDocuments(condition);
-    res.status(200).json({ 
+    res.status(200).json({
       status: 200,
       message: "List",
       data: productList,
-      totalProducts: totalProducts/limit,
+      totalProducts: totalProducts,
       currentPage: page,
     });
   } catch (e) {
-    res.status(500).json({ 
+    res.status(500).json({
       status: 500,
-      message: "Error retrieving top sold products",
-      error: e.message 
+      message: "Error retrieving products",
+      error: e.message,
     });
-    console.error("Error in getTopSoldProduct:", e);
+    console.error("Error in getAllProduct:", e);
   }
 };
 
+const getAllProduct = async (req, res) => {
+  try {
+    const productList = await await ProductModel.find()
+    res.status(200).json({
+      status: 200,
+      message: "List",
+      data: productList,
+    });
+  } catch (e) {
+    res.status(500).json({
+      status: 500,
+      message: "Error retrieving products",
+      error: e.message,
+    });
+    console.error("Error in getAllProduct:", e);
+  }
+};
+
+const getFeaturedProducts = async (req, res) => {
+  try {
+    const featuredProducts = await ProductModel.find({
+      isFeatured: true,
+    }).exec;
+    res
+      .status(200)
+      .json({ status: 200, message: "List", data: featuredProducts });
+  } catch (e) {
+    res.status(500).json({
+      status: 500,
+      message: "Error retrieving products",
+      error: e.message,
+    });
+    console.error("Error in getFeaturedProducts:", e);
+  }
+};
+
+const getDiscountedProducts = async (req, res) => {
+  try {
+    const discountedProducts = await ProductModel.find({
+      discount: { $gt: 0 },
+    }).exec;
+    res
+      .status(200)
+      .json({ status: 200, message: "List", data: discountedProducts });
+  } catch (e) {
+    res.status(500).json({
+      status: 500,
+      message: "Error retrieving products",
+      error: e.message,
+    });
+    console.error("Error in getDiscountedProducts:", e);
+  }
+};
 
 module.exports = {
   addCate,
@@ -163,8 +289,14 @@ module.exports = {
   deleteCate,
   getAllCategories,
   addProduct,
+  updateProduct,
+  deleteProduct,
+  uploadProductImages,
   getProductByCategory,
   getProductDetail,
   getTopSoldProduct,
   getAll,
+  getAllProduct,
+  getFeaturedProducts,
+  getDiscountedProducts,
 };
