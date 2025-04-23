@@ -7,26 +7,10 @@ const sharp = require("sharp");
 require("dotenv/config");
 
 const getAll = async (req, res) => {
-  const keyWord = req.query.keyWord;
-  const { page = 1, limit = 2 } = req.query;
 
-  // tim ten den tu query string
-  let condition = {};
-  if (keyWord && keyWord.length > 0) {
-    condition.email = { $regex: keyWord, $options: "i" };
-  }
-  // pagination có kèm theo đk
-  const userlists = await UserModel.find(condition)
-    .limit(limit * 1)
-    .skip((page - 1) * limit)
-    .exec();
-
-  // dem so luong document thoa dk
-  const count = await UserModel.countDocuments(condition);
-  return res.json({
-    userlists,
-    totalPages: Math.ceil(count / limit),
-    currentPage: page,
+  const userlists = await UserModel.find().select('-pass');
+  return res.status(200).json({
+    data: userlists,
   });
 };
 

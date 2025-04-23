@@ -250,8 +250,8 @@ const getAllProduct = async (req, res) => {
 const getFeaturedProducts = async (req, res) => {
   try {
     const featuredProducts = await ProductModel.find({
-      isFeatured: true,
-    }).exec;
+      featured: true,
+    })
     res
       .status(200)
       .json({ status: 200, message: "List", data: featuredProducts });
@@ -269,7 +269,7 @@ const getDiscountedProducts = async (req, res) => {
   try {
     const discountedProducts = await ProductModel.find({
       discount: { $gt: 0 },
-    }).exec;
+    })
     res
       .status(200)
       .json({ status: 200, message: "List", data: discountedProducts });
