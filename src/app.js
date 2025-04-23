@@ -11,7 +11,7 @@ const fs = require('fs');
 const app = express();
 
 app.use(cors({
-  origin: ['http://192.168.1.2:5713','http://localhost:5173', 'https://toy-shop-front-end.vercel.app'],
+  origin: ['http://192.168.1.2:5713','http://localhost:5173', 'https://raptoy.vercel.app'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
